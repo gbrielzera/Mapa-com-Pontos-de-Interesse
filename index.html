@@ -6,8 +6,9 @@
     <title>Exemplo: Mapa com Pontos de Interesse</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.css" />
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,89 +16,91 @@
 
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div id="locate-modal-backdrop" class="modal-backdrop hidden">
+        <div id="locate-modal" class="modal-content">
+            <h4>Confirmar Localização</h4>
+            <p>A localização em computadores (sem GPS) pode ser imprecisa (erro de vários quilómetros).</p>
+            <p>Para parar de seguir a localização, clique no botão novamente.</p>
+            <div class="modal-actions">
+                <button id="modal-confirm-locate" class="modal-btn modal-btn-confirm">Ativar</button>
+                <button id="modal-cancel-locate" class="modal-btn modal-btn-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.js"></script>
+    <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
+
     <script>
-        // Variável para controlar se estamos no modo de adicionar pontos
         let adding = false;
-        
         const markers = {}; 
         let markerIdCounter = 0;
-        
         const STORAGE_KEY = 'mapPoints';
 
-        // --- NOVO (PASSO 5 - Ícones) ---
-        // 1. Define os Ícones
-        //    (Usamos os URLs oficiais do Leaflet)
+        // LayerGroup para marcadores pesquisáveis (Passo 7)
+        const searchableMarkers = L.layerGroup();
+
+        // Definições dos Ícones (Passo 5)
         const blueIcon = L.icon({
             iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
             shadowSize: [41, 41]
         });
-
         const redIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
             shadowSize: [41, 41]
         });
-
         const greenIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
             shadowSize: [41, 41]
         });
-
         const yellowIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
             shadowSize: [41, 41]
         });
         
-
-        // 2. Define as Categorias
+        // Definições das Categorias (Passo 5)
         const categories = {
             'ocorrencia': 'Ocorrência',
             'vigilancia': 'Vigilância',
             'apreensao': 'Apreensão',
             'outro': 'Outro'
         };
-
-        // Mapeia as categorias aos ícones
         const categoryIcons = {
             'ocorrencia': redIcon,
             'vigilancia': greenIcon,
-            'apreensao': blueIcon, // Exemplo, pode mudar
-            'outro': yellowIcon
+            'apreensao': blueIcon,
+            'outro': yellowIcon 
         };
-        // --- FIM DA MUDANÇA ---
 
+        // Definição do Mapa (Passo 2.A)
         const bounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
-        
         const map = L.map('map', {
             minZoom: 3,
             maxBounds: bounds, 
             maxBoundsViscosity: 1.0
         }).setView([-14.235, -51.9253], 6);
 
+        // Adiciona o LayerGroup ao mapa (Passo 7)
+        searchableMarkers.addTo(map);
+
+        // Camada de Tiles (Passo 2.A)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap contributors, © CartoDB',
             noWrap: true
         }).addTo(map);
         
+        // Controlo de Pesquisa de Endereço (Passo 4 - Corrigido)
         L.Control.geocoder({
             placeholder: 'Pesquisar endereço...',
             defaultMarkGeocode: false,
@@ -108,23 +111,107 @@
             })
             .addTo(map);
 
+        // Lógica do Modal de Localização (Passo 6.B - Corrigida)
+        // Lógica do Modal de Localização
+        const locateControl = L.control.locate({
+            strings: { title: "" }, 
+            flyTo: true,
+            keepCurrentZoomLevel: true,
+            locateOptions: {
+                enableHighAccuracy: true
+            },
+            markerClass: L.CircleMarker, 
+            markerStyle: { 
+                color: '#136AEC', fillColor: '#2A93EE', fillOpacity: 0.7,
+                weight: 2, opacity: 0.9, radius: 5
+            },
+            circleStyle: { 
+                color: '#136AEC', fillColor: '#136AEC', fillOpacity: 0.15,
+                weight: 0, opacity: 0.5
+            }
+        });
 
-        // --- Funções de Persistência (Passo 3) ---
+        // Adiciona o controle (para funcionar internamente)
+        locateControl.addTo(map);
+
+        // Remove o botão padrão do Leaflet Locate
+        const defaultLocateButton = document.querySelector('.leaflet-control-locate');
+        if (defaultLocateButton) {
+            defaultLocateButton.remove();
+        }
+
+        locateControl.stop(); // começa inativo
+
+        // Botão personalizado (mantido)
+        const CustomLocateButton = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd: function (map) {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control'); 
+                const button = L.DomUtil.create('a', 'custom-locate-button', container); 
+                button.href = '#';
+                button.role = 'button';
+                button.title = 'Mostrar localização (impreciso no PC). Clique novamente para parar.';
+                L.DomEvent.disableClickPropagation(button); 
+                L.DomEvent.on(button, 'click', function(e) {
+                    e.preventDefault();
+                    if (locateControl._active) { 
+                        locateControl.stop(); 
+                    } else {
+                        document.getElementById('locate-modal-backdrop').classList.remove('hidden');
+                    }
+                });
+                map.on('locationfound locationerror', () => {
+                    if (locateControl._active) L.DomUtil.addClass(button, 'active');
+                    else L.DomUtil.removeClass(button, 'active');
+                });
+                return container;
+            }
+        });
+        map.addControl(new CustomLocateButton());
+        // Adiciona o BOTÃO PERSONALIZADO
+        
+        document.getElementById('modal-cancel-locate').addEventListener('click', () => {
+            document.getElementById('locate-modal-backdrop').classList.add('hidden');
+        });
+        document.getElementById('modal-confirm-locate').addEventListener('click', () => {
+            document.getElementById('locate-modal-backdrop').classList.add('hidden');
+            locateControl.start(); // ATIVA A LOCALIZAÇÃO APÓS CONFIRMAR
+        });
+
+        // Controlo de Pesquisa de Pontos (Passo 7)
+        const searchControl = new L.Control.Search({
+            layer: searchableMarkers, 
+            propertyName: 'name',     
+            marker: false,            
+            moveToLocation: function(latlng, title, map) {
+                map.setView(latlng, 15); 
+                 searchableMarkers.eachLayer(function(layer) {
+                     // NOVO: Verifica se 'options' existe antes de aceder a 'title'
+                     if (layer.options && layer.options.title === title) { 
+                         layer.openPopup();
+                     }
+                 });
+            },
+            textPlaceholder: 'Pesquisar ponto...', 
+            initial: false, 
+            zoom: 15        
+        });
+        searchControl.on('search:locationfound', function(e) {
+             if(e.layer) { // Verifica se 'e.layer' existe
+                e.layer.openPopup(); 
+             }
+        });
+        map.addControl(searchControl);
+
+        // Funções de Persistência (Passo 3 e 5)
         function saveMarkers() {
             const markersToSave = [];
             for (const id in markers) {
                 const markerData = markers[id];
-                // --- MUDANÇA (PASSO 5) ---
-                // Salva a categoria
                 markersToSave.push({
-                    id: markerData.id,
-                    name: markerData.name,
-                    description: markerData.description,
-                    lat: markerData.lat,
-                    lng: markerData.lng,
-                    category: markerData.category // NOVO
+                    id: markerData.id, name: markerData.name, description: markerData.description,
+                    lat: markerData.lat, lng: markerData.lng, category: markerData.category 
                 });
-                // --- FIM DA MUDANÇA ---
             }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(markersToSave));
         }
@@ -132,62 +219,44 @@
         function loadMarkers() {
             const savedData = localStorage.getItem(STORAGE_KEY);
             if (!savedData) return; 
-
             const parsedMarkers = JSON.parse(savedData);
             let maxId = 0; 
-
             parsedMarkers.forEach(data => {
-                // --- MUDANÇA (PASSO 5) ---
-                // Lê a categoria
-                const { id, name, description, lat, lng, category } = data; // NOVO
-
-                // Define o ícone com base na categoria, ou usa o azul como padrão
+                const { id, name, description, lat, lng, category } = data; 
                 const icon = categoryIcons[category] || blueIcon;
-
-                // Mostra a categoria no popup
-                const popupContent = getPopupContent(id, name, description, category); // NOVO
+                const popupContent = getPopupContent(id, name, description, category); 
                 
-                // Cria o marcador com o ícone correto
-                const marker = L.marker([lat, lng], { icon: icon }) // NOVO
-                    .addTo(map)
+                // Cria o marcador com 'title' para a pesquisa (Passo 7)
+                const marker = L.marker([lat, lng], { 
+                        icon: icon,
+                        title: name 
+                    }) 
                     .bindPopup(popupContent)
                     .bindTooltip(name);
 
-                // Salva a categoria no armazém
-                markers[id] = {
-                    id: id,
-                    marker: marker,
-                    name: name,
-                    description: description,
-                    lat: lat,
-                    lng: lng,
-                    category: category // NOVO
-                };
-                // --- FIM DA MUDANÇA ---
+                marker.options.name = name; // Guarda o nome para a pesquisa
+                searchableMarkers.addLayer(marker); // Adiciona ao grupo pesquisável
 
-                if (id > maxId) {
-                    maxId = id;
-                }
+                markers[id] = {
+                    id: id, marker: marker, name: name, description: description,
+                    lat: lat, lng: lng, category: category 
+                };
+                if (id > maxId) { maxId = id; }
             });
             markerIdCounter = maxId + 1;
         }
-        // --- Fim da Persistência ---
 
-
+        // Referência e Lógica do Botão 'Adicionar Ponto' (Passo 1)
         const addBtn = document.getElementById('addBtn');
-
         addBtn.addEventListener('click', () => {
             adding = !adding;
             addBtn.textContent = adding ? 'Cancelar' : 'Adicionar ponto';
             map.getContainer().style.cursor = adding ? 'crosshair' : '';
         });
 
-        // --- MUDANÇA (PASSO 5) ---
-        // Atualiza a função para incluir a Categoria
+        // Funções Ajudantes (Passo 2.B e 5)
         function getPopupContent(id, name, description, category) {
-            // Mostra o nome da categoria (ex: "Ocorrência")
             const categoryName = categories[category] || 'Sem Categoria';
-            
             return `
                 <small class="popup-category">${categoryName}</small>
                 <b>${name}</b><br>${description}
@@ -197,32 +266,23 @@
                 </div>
             `;
         }
-        // --- FIM DA MUDANÇA ---
-
-        // --- MUDANÇA (PASSO 5) ---
-        // Atualiza a função para incluir o seletor de Categoria
         function getFormHTML(data = {}) {
             const id = data.id !== undefined ? `data-id="${data.id}"` : '';
             const formId = data.id !== undefined ? 'editPointForm' : 'pointForm';
             const name = data.name || '';
             const description = data.description || '';
-            const currentCategory = data.category || 'outro'; // Define 'Outro' como padrão
-
-            // Cria as opções do <select> dinamicamente
+            const currentCategory = data.category || 'outro'; 
             let categoryOptions = '';
             for (const key in categories) {
                 const selected = (key === currentCategory) ? 'selected' : '';
                 categoryOptions += `<option value="${key}" ${selected}>${categories[key]}</option>`;
             }
-            
             return `
                 <form id="${formId}" ${id}>
                     <label>Nome</label>
                     <input type="text" name="name" value="${name}" placeholder="Digite o nome" autofocus>
-
                     <label>Descrição</label>
                     <textarea name="description" placeholder="Digite a descrição">${description}</textarea>
-
                     <label>Categoria</label>
                     <select name="category">
                         ${categoryOptions}
@@ -234,167 +294,105 @@
                 </form>
             `;
         }
-        // --- FIM DA MUDANÇA ---
 
-
+        // Lógica de Adicionar Ponto (map.on('click')) (Passo 1, 5 e 7)
         map.on('click', (e) => {
             if (!adding) return;
-
             const { lat, lng } = e.latlng;
-            const formHTML = getFormHTML(); // Formulário de adição (sem dados)
-
-            const popup = L.popup({
-                closeOnClick: false,
-                closeButton: false, 
-                autoClose: false
-            })
-                .setLatLng([lat, lng])
-                .setContent(formHTML)
-                .openOn(map);
-
-            adding = false;
-            addBtn.textContent = 'Adicionar ponto';
-            map.getContainer().style.cursor = '';
-
-
+            const formHTML = getFormHTML(); 
+            const popup = L.popup({ closeOnClick: false, closeButton: false, autoClose: false })
+                .setLatLng([lat, lng]).setContent(formHTML).openOn(map);
+            adding = false; addBtn.textContent = 'Adicionar ponto'; map.getContainer().style.cursor = '';
             setTimeout(() => {
                 const form = document.getElementById('pointForm');
                 const cancelBtn = form.querySelector('.cancelBtn'); 
-
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
-
-                    // --- MUDANÇA (PASSO 5) ---
-                    // Lê a categoria do formulário
                     const name = form.name.value;
                     const description = form.description.value;
-                    const category = form.category.value; // NOVO
+                    const category = form.category.value; 
                     const newId = markerIdCounter++;
-
-                    // Define o ícone e o conteúdo do popup
-                    const icon = categoryIcons[category] || blueIcon; // NOVO
-                    const popupContent = getPopupContent(newId, name, description, category); // NOVO
+                    const icon = categoryIcons[category] || blueIcon; 
+                    const popupContent = getPopupContent(newId, name, description, category); 
                     
-                    // Cria o marcador com o ícone correto
-                    const marker = L.marker([lat, lng], { icon: icon }) // NOVO
-                        .addTo(map)
+                    // Cria marcador com 'title' e adiciona ao LayerGroup (Passo 7)
+                    const marker = L.marker([lat, lng], { icon: icon, title: name }) 
                         .bindPopup(popupContent)    
                         .bindTooltip(name);
+                    marker.options.name = name; 
+                    searchableMarkers.addLayer(marker); 
 
-                    // Salva a categoria no armazém
                     markers[newId] = {
-                        id: newId,
-                        marker: marker,
-                        name: name,
-                        description: description,
-                        lat: lat, 
-                        lng: lng,
-                        category: category // NOVO
+                        id: newId, marker: marker, name: name, description: description,
+                        lat: lat, lng: lng, category: category 
                     };
-                    // --- FIM DA MUDANÇA ---
-                    
                     saveMarkers();
                     map.closePopup();
                 });
-
-                cancelBtn.addEventListener('click', () => {
-                    map.closePopup();
-                });
+                cancelBtn.addEventListener('click', () => { map.closePopup(); });
             }, 0);
         });
 
-        
+        // Lógica de Editar/Apagar (map.on('popupopen')) (Passo 2.B, 5 e 7)
         map.on('popupopen', (e) => {
             const popup = e.popup;
-            
-            // Lógica de Apagar
             const deleteBtn = popup.getElement().querySelector('.popup-delete-btn');
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => {
                     const id = deleteBtn.dataset.id;
-                    const markerToRemove = markers[id].marker;
-                    
-                    if (markerToRemove) {
-                        map.removeLayer(markerToRemove);
-                        delete markers[id];
+                    const markerData = markers[id]; 
+                    if (markerData && markerData.marker) {
+                        searchableMarkers.removeLayer(markerData.marker); // Remove do grupo (Passo 7)
+                        map.removeLayer(markerData.marker); 
+                        delete markers[id]; 
                         saveMarkers(); 
                     }
                 });
             }
-
-            // Lógica de Editar
             const editBtn = popup.getElement().querySelector('.popup-edit-btn');
             if (editBtn) {
-                editBtn.addEventListener('click', () => {
+                 editBtn.addEventListener('click', () => {
                     const id = editBtn.dataset.id;
                     const markerData = markers[id];
                     const latLng = markerData.marker.getLatLng();
-
                     map.closePopup();
-
-                    // --- MUDANÇA (PASSO 5) ---
-                    // Passa os dados completos (incluindo categoria) para o formulário
                     const editFormHTML = getFormHTML({
-                        id: id,
-                        name: markerData.name,
-                        description: markerData.description,
-                        category: markerData.category // NOVO
+                        id: id, name: markerData.name, description: markerData.description, category: markerData.category 
                     });
-                    // --- FIM DA MUDANÇA ---
-
-                    const editPopup = L.popup({
-                        closeOnClick: false,
-                        closeButton: false, 
-                        autoClose: false
-                    })
-                        .setLatLng(latLng)
-                        .setContent(editFormHTML)
-                        .openOn(map);
-                    
+                    const editPopup = L.popup({ closeOnClick: false, closeButton: false, autoClose: false })
+                        .setLatLng(latLng).setContent(editFormHTML).openOn(map);
                     setTimeout(() => {
                         const editForm = document.getElementById('editPointForm');
                         const cancelEditBtn = editForm.querySelector('.cancelBtn');
-
                         editForm.addEventListener('submit', (e) => {
                             e.preventDefault();
-
-                            // --- MUDANÇA (PASSO 5) ---
-                            // Lê a nova categoria
                             const newName = editForm.name.value;
                             const newDescription = editForm.description.value;
-                            const newCategory = editForm.category.value; // NOVO
-                            const newIcon = categoryIcons[newCategory] || blueIcon; // NOVO
-
-                            // Atualiza o armazém
+                            const newCategory = editForm.category.value; 
+                            const newIcon = categoryIcons[newCategory] || blueIcon; 
                             markers[id].name = newName;
                             markers[id].description = newDescription;
-                            markers[id].category = newCategory; // NOVO
-                            
+                            markers[id].category = newCategory; 
                             saveMarkers(); 
+                            const newPopupContent = getPopupContent(id, newName, newDescription, newCategory); 
 
-                            // Atualiza o popup
-                            const newPopupContent = getPopupContent(id, newName, newDescription, newCategory); // NOVO
+                            // Atualiza 'title' e 'name' para a pesquisa (Passo 7)
+                            markerData.marker.options.title = newName; 
+                            markerData.marker.options.name = newName; 
 
-                            // Atualiza o marcador (ícone, popup, tooltip)
-                            markerData.marker.setIcon(newIcon); // NOVO
+                            markerData.marker.setIcon(newIcon); 
                             markerData.marker.setPopupContent(newPopupContent);
                             markerData.marker.setTooltipContent(newName);
-                            // --- FIM DA MUDANÇA ---
-
                             map.closePopup();
                         });
-
-                        cancelEditBtn.addEventListener('click', () => {
-                            map.closePopup();
-                        });
+                        cancelEditBtn.addEventListener('click', () => { map.closePopup(); });
                     }, 0);
                 });
             }
         });
-
-        // Carregamento Inicial
+        
+        // Carregamento Inicial (Passo 3)
         loadMarkers();
-
     </script>
 </body>
 </html>

@@ -9,13 +9,12 @@ html, body {
     height: 100%;
 }
 
-/* --- MUDANÇA (PASSO 4 - Layout) --- */
-/* Botão principal (movido para o canto superior direito) */
+/* Botão principal (mantido centralizado) */
 #addBtn {
     position: absolute;
     top: 10px;
-    left: 50%; /* ALTERADO: de 'left' para 'right' */
-    /* REMOVIDO: transform: translateX(-50%); */
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
     padding: 10px 16px;
     font-size: 14px;
@@ -24,14 +23,14 @@ html, body {
     background-color: #2196F3;
     color: white;
     cursor: pointer;
+    transition: background-color 0.2s ease;
 }
-/* --- FIM DA MUDANÇA --- */
 
 #addBtn:hover {
     background-color: #1976D2;
 }
 
-/* Formulário dentro do popup */
+/* --- Estilos do Formulário (unificado) --- */
 .leaflet-popup-content form {
     min-width: 180px;
 }
@@ -45,7 +44,8 @@ html, body {
 }
 
 .leaflet-popup-content input,
-.leaflet-popup-content textarea {
+.leaflet-popup-content textarea,
+.leaflet-popup-content select {
     width: 100%;
     padding: 6px;
     border: 1px solid #ccc;
@@ -81,18 +81,24 @@ html, body {
     color: white;
 }
 
-/* O seletor foi atualizado para uma classe no Passo 2.B */
 .form-actions button.cancelBtn {
     background-color: #f44336;
     color: white;
 }
 
+/* --- Estilos do Popup (editar/apagar/categoria) --- */
+.popup-category {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: #555;
+    text-transform: uppercase;
+}
 
-/* --- Estilos consolidados para os botões Editar/Apagar (Passo 2.B) --- */
 .popup-actions {
     margin-top: 10px;
     display: flex;
-    gap: 8px; 
+    gap: 8px;
 }
 
 .popup-delete-btn {
@@ -104,8 +110,8 @@ html, body {
     cursor: pointer;
     background-color: #f44336;
     color: white;
+    transition: background-color 0.2s ease;
 }
-
 .popup-delete-btn:hover {
     background-color: #d32f2f;
 }
@@ -117,92 +123,153 @@ html, body {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    background-color: #4CAF50; 
+    background-color: #4CAF50;
     color: white;
+    transition: background-color 0.2s ease;
 }
-
 .popup-edit-btn:hover {
     background-color: #45a049;
 }
 
-/* --- NOVO (PASSO 4.B - Correção de Layout da Pesquisa) --- */
-
-/* Define a largura do campo de pesquisa quando expandido */
+/* --- Estilos da Pesquisa de Endereço --- */
 .leaflet-control-geocoder.leaflet-control-geocoder-expanded {
     width: 260px;
 }
 
-/* Garante que os resultados da pesquisa (lista) apareçam
-   SOBRE o botão central "Adicionar ponto" (z-index 1001 vs 1000) */
 .leaflet-control-geocoder-alternatives {
-    z-index: 1001; 
+    z-index: 1001; /* Garante que os resultados apareçam sobre o botão principal */
 }
 
-/* --- Correção de layout (Icone + Input) --- */
-/* (Necessário para corrigir o bug da imagem image_7f3265.png) */
-
-/* O container do formulário precisa ser 'relative'
-   para o ícone 'absolute' se posicionar dentro dele. */
 .leaflet-control-geocoder-form {
     position: relative;
-    display: block; 
+    display: block;
 }
 
-/* O ícone de lupa (dentro do formulário) */
+/* Ícone da lupa */
 .leaflet-control-geocoder-form .leaflet-control-geocoder-icon {
     position: absolute;
-    left: 12px; /* Posição da esquerda */
-    top: 50%;  /* Centraliza verticalmente */
+    left: 8px;
+    top: 50%;
     transform: translateY(-50%);
-    z-index: 1002; /* Garante que o ícone fique sobre o input */
+    z-index: 1002;
 }
 
-/* O campo de input */
+/* Input da lupa */
 .leaflet-control-geocoder-form input {
-    /* Adiciona espaço à esquerda para o ícone não sobrepor o texto */
-    padding-left: 15px !important; 
+    padding-left: 35px !important;
     width: 100%;
-    /* Garante que o padding não "estoure" a largura */
-    box-sizing: border-box; 
-}
-
-/* ... (início do teu styles.css) ... */
-
-.leaflet-popup-content label {
-    display: block;
-    margin-top: 8px;
-    margin-bottom: 4px;
-    font-weight: bold;
-    font-size: 13px;
-}
-
-/* --- MUDANÇA (PASSO 5) --- */
-/* Adiciona 'select' a este seletor */
-.leaflet-popup-content input,
-.leaflet-popup-content textarea,
-.leaflet-popup-content select {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-family: Arial, sans-serif;
     box-sizing: border-box;
-    font-size: 13px;
 }
-/* --- FIM DA MUDANÇA --- */
 
-/* NOVO: Estilo para o texto da categoria no popup */
-.popup-category {
+/* --- Botão de Localização Customizado --- */
+.custom-locate-container {
+    margin-top: 10px;
+    margin-right: 10px;
+}
+
+/* Botão de localização personalizado */
+.custom-locate-button {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 20px 20px;
+    width: 30px;
+    height: 30px;
     display: block;
-    margin-bottom: 4px;
-    font-size: 11px;
-    color: #555;
-    text-transform: uppercase;
+    border-radius: 4px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
 }
 
-.leaflet-popup-content textarea {
-    min-height: 50px;
-    resize: vertical;
+/* Quando clicado */
+.custom-locate-button:hover {
+    transform: scale(1.05);
 }
 
-/* ... (resto do teu styles.css) ... */
+/* Estado ativo: muda a cor e adiciona o pulso */
+.custom-locate-button.active {
+    background-color: #2196F3;
+    animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+    }
+}
+
+
+/* --- Modal de Confirmação --- */
+.hidden {
+    display: none !important;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h4 {
+    margin-top: 0;
+}
+
+.modal-content p {
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 10px 0;
+}
+
+.modal-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.modal-btn-confirm {
+    background-color: #2196F3;
+    color: white;
+}
+.modal-btn-confirm:hover {
+    background-color: #1976D2;
+}
+
+.modal-btn-cancel {
+    background-color: #f44336;
+    color: white;
+}
+.modal-btn-cancel:hover {
+    background-color: #d32f2f;
+}
