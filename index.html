@@ -4,7 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Exemplo: Mapa com Pontos de Interesse</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,18 +17,15 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script>
         // Variável para controlar se estamos no modo de adicionar pontos
         let adding = false;
         
-        // O "Armazém" de marcadores.
         const markers = {}; 
         let markerIdCounter = 0;
         
-        // --- NOVO (PASSO 3) ---
-        // Constante para a chave do localStorage
         const STORAGE_KEY = 'mapPoints';
-        // --- FIM DA MUDANÇA ---
 
         const bounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
         
@@ -41,15 +41,25 @@
             noWrap: true
         }).addTo(map);
         
-        // --- NOVO (PASSO 3) ---
-        // 1. FUNÇÃO DE SALVAR
-        //    Converte o armazém 'markers' em dados simples e salva no localStorage
+        // --- NOVO (PASSO 4 - Geocoder) ---
+        // 1. INICIALIZA O CONTROLO DE PESQUISA
+        L.Control.geocoder({
+                placeholder: 'Pesquisar endereço...',
+                defaultMarkGeocode: false,
+                collapsed: false // NOVO: Impede que o controlo se recolha (fique só o ícone)
+            })
+                .on('markgeocode', function (e) {
+                    map.fitBounds(e.geocode.bbox);
+                })
+                .addTo(map);
+        // --- FIM DA MUDANÇA ---
+
+
+        // --- Funções de Persistência (Passo 3) ---
         function saveMarkers() {
             const markersToSave = [];
-            // Itera sobre o nosso armazém de runtime
             for (const id in markers) {
                 const markerData = markers[id];
-                // Adiciona apenas os dados "puros" (JSON-safe) à lista
                 markersToSave.push({
                     id: markerData.id,
                     name: markerData.name,
@@ -58,32 +68,25 @@
                     lng: markerData.lng
                 });
             }
-            // Converte a lista para string JSON e salva
             localStorage.setItem(STORAGE_KEY, JSON.stringify(markersToSave));
         }
 
-        // 2. FUNÇÃO DE CARREGAR
-        //    Lê o localStorage e recria os marcadores no mapa
         function loadMarkers() {
             const savedData = localStorage.getItem(STORAGE_KEY);
-            if (!savedData) return; // Se não houver dados, não faz nada
+            if (!savedData) return; 
 
             const parsedMarkers = JSON.parse(savedData);
-            let maxId = 0; // Para atualizar o nosso contador de ID
+            let maxId = 0; 
 
             parsedMarkers.forEach(data => {
                 const { id, name, description, lat, lng } = data;
-
-                // Recria o conteúdo do popup
                 const popupContent = getPopupContent(id, name, description);
                 
-                // Recria o marcador
                 const marker = L.marker([lat, lng])
                     .addTo(map)
                     .bindPopup(popupContent)
                     .bindTooltip(name);
 
-                // Adiciona o marcador recriado ao nosso armazém de runtime
                 markers[id] = {
                     id: id,
                     marker: marker,
@@ -93,16 +96,13 @@
                     lng: lng
                 };
 
-                // Atualiza o ID máximo encontrado
                 if (id > maxId) {
                     maxId = id;
                 }
             });
-
-            // Atualiza o contador global para evitar IDs duplicados
             markerIdCounter = maxId + 1;
         }
-        // --- FIM DA MUDANÇA ---
+        // --- Fim da Persistência ---
 
 
         // Referência ao botão
@@ -186,21 +186,16 @@
                         .bindPopup(popupContent)    
                         .bindTooltip(name);
 
-                    // --- MUDANÇA (PASSO 3) ---
-                    // 3. INTEGRAÇÃO (Adicionar)
-                    //    Guardamos todos os dados, incluindo lat/lng
                     markers[newId] = {
                         id: newId,
                         marker: marker,
                         name: name,
                         description: description,
-                        lat: lat, // Salva a latitude
-                        lng: lng  // Salva a longitude
+                        lat: lat, 
+                        lng: lng
                     };
                     
-                    // Chamamos a função de salvar
                     saveMarkers();
-                    // --- FIM DA MUDANÇA ---
                     
                     map.closePopup();
                 });
@@ -215,7 +210,7 @@
         map.on('popupopen', (e) => {
             const popup = e.popup;
             
-            // --- LÓGICA DE APAGAR ---
+            // Lógica de Apagar
             const deleteBtn = popup.getElement().querySelector('.popup-delete-btn');
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => {
@@ -225,16 +220,12 @@
                     if (markerToRemove) {
                         map.removeLayer(markerToRemove);
                         delete markers[id];
-                        
-                        // --- MUDANÇA (PASSO 3) ---
-                        // 3. INTEGRAÇÃO (Apagar)
-                        saveMarkers(); // Salva o estado (sem o item apagado)
-                        // --- FIM DA MUDANÇA ---
+                        saveMarkers(); 
                     }
                 });
             }
 
-            // --- LÓGICA DE EDITAR ---
+            // Lógica de Editar
             const editBtn = popup.getElement().querySelector('.popup-edit-btn');
             if (editBtn) {
                 editBtn.addEventListener('click', () => {
@@ -269,18 +260,13 @@
                             const newName = editForm.name.value;
                             const newDescription = editForm.description.value;
 
-                            // Atualiza os dados no "armazém"
                             markers[id].name = newName;
                             markers[id].description = newDescription;
                             
-                            // --- MUDANÇA (PASSO 3) ---
-                            // 3. INTEGRAÇÃO (Editar)
-                            saveMarkers(); // Salva os dados atualizados
-                            // --- FIM DA MUDANÇA ---
+                            saveMarkers(); 
 
                             const newPopupContent = getPopupContent(id, newName, newDescription);
 
-                            // Atualiza o marcador existente
                             markerData.marker.setPopupContent(newPopupContent);
                             markerData.marker.setTooltipContent(newName);
 
@@ -295,11 +281,8 @@
             }
         });
 
-        // --- NOVO (PASSO 3) ---
-        // 4. CARREGAMENTO INICIAL
-        //    Chama a função loadMarkers() assim que o script é executado
+        // Carregamento Inicial
         loadMarkers();
-        // --- FIM DA MUDANÇA ---
 
     </script>
 </body>

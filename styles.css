@@ -9,12 +9,13 @@ html, body {
     height: 100%;
 }
 
-/* Botão principal */
+/* --- MUDANÇA (PASSO 4 - Layout) --- */
+/* Botão principal (movido para o canto superior direito) */
 #addBtn {
     position: absolute;
     top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 50%; /* ALTERADO: de 'left' para 'right' */
+    /* REMOVIDO: transform: translateX(-50%); */
     z-index: 1000;
     padding: 10px 16px;
     font-size: 14px;
@@ -24,6 +25,7 @@ html, body {
     color: white;
     cursor: pointer;
 }
+/* --- FIM DA MUDANÇA --- */
 
 #addBtn:hover {
     background-color: #1976D2;
@@ -79,20 +81,20 @@ html, body {
     color: white;
 }
 
-.form-actions button[type="button"] {
+/* O seletor foi atualizado para uma classe no Passo 2.B */
+.form-actions button.cancelBtn {
     background-color: #f44336;
     color: white;
 }
 
-/* --- NOVO (PASSO 2.B) --- */
 
-/* Estilos para as ações dentro do popup (Apagar / Editar) */
+/* --- Estilos consolidados para os botões Editar/Apagar (Passo 2.B) --- */
 .popup-actions {
     margin-top: 10px;
     display: flex;
+    gap: 8px; 
 }
 
-/* Estilo para o botão de apagar (vermelho, como o "Cancelar") */
 .popup-delete-btn {
     flex: 1;
     padding: 6px 12px;
@@ -108,42 +110,14 @@ html, body {
     background-color: #d32f2f;
 }
 
-/* --- FIM DA MUDANÇA --- */
-
-/* --- MUDANÇA (PASSO 2.B - Editar) --- */
-
-/* Ajusta o container dos botões (agora 2) dentro do popup */
-.popup-actions {
-    margin-top: 10px;
-    display: flex;
-    gap: 8px; /* Adiciona espaço entre os botões */
-}
-
-/* O botão de apagar agora divide o espaço */
-.popup-delete-btn {
-    flex: 1; /* Ocupa metade do espaço */
-    padding: 6px 12px;
-    font-size: 13px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    background-color: #f44336;
-    color: white;
-}
-
-.popup-delete-btn:hover {
-    background-color: #d32f2f;
-}
-
-/* NOVO: Estilo para o botão de editar (verde, como o "Salvar") */
 .popup-edit-btn {
-    flex: 1; /* Ocupa metade do espaço */
+    flex: 1;
     padding: 6px 12px;
     font-size: 13px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    background-color: #4CAF50; /* Verde */
+    background-color: #4CAF50; 
     color: white;
 }
 
@@ -151,10 +125,43 @@ html, body {
     background-color: #45a049;
 }
 
-/* Ajusta o botão de cancelar nos formulários */
-/* (O seletor foi atualizado no HTML para ser uma classe) */
-.form-actions button.cancelBtn {
-    background-color: #f44336;
-    color: white;
+/* --- NOVO (PASSO 4.B - Correção de Layout da Pesquisa) --- */
+
+/* Define a largura do campo de pesquisa quando expandido */
+.leaflet-control-geocoder.leaflet-control-geocoder-expanded {
+    width: 260px;
 }
-/* --- FIM DA MUDANÇA --- */
+
+/* Garante que os resultados da pesquisa (lista) apareçam
+   SOBRE o botão central "Adicionar ponto" (z-index 1001 vs 1000) */
+.leaflet-control-geocoder-alternatives {
+    z-index: 1001; 
+}
+
+/* --- Correção de layout (Icone + Input) --- */
+/* (Necessário para corrigir o bug da imagem image_7f3265.png) */
+
+/* O container do formulário precisa ser 'relative'
+   para o ícone 'absolute' se posicionar dentro dele. */
+.leaflet-control-geocoder-form {
+    position: relative;
+    display: block; 
+}
+
+/* O ícone de lupa (dentro do formulário) */
+.leaflet-control-geocoder-form .leaflet-control-geocoder-icon {
+    position: absolute;
+    left: 12px; /* Posição da esquerda */
+    top: 50%;  /* Centraliza verticalmente */
+    transform: translateY(-50%);
+    z-index: 1002; /* Garante que o ícone fique sobre o input */
+}
+
+/* O campo de input */
+.leaflet-control-geocoder-form input {
+    /* Adiciona espaço à esquerda para o ícone não sobrepor o texto */
+    padding-left: 15px !important; 
+    width: 100%;
+    /* Garante que o padding não "estoure" a largura */
+    box-sizing: border-box; 
+}
