@@ -27,6 +27,63 @@
         
         const STORAGE_KEY = 'mapPoints';
 
+        // --- NOVO (PASSO 5 - Ícones) ---
+        // 1. Define os Ícones
+        //    (Usamos os URLs oficiais do Leaflet)
+        const blueIcon = L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        const redIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        const greenIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        const yellowIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+        
+
+        // 2. Define as Categorias
+        const categories = {
+            'ocorrencia': 'Ocorrência',
+            'vigilancia': 'Vigilância',
+            'apreensao': 'Apreensão',
+            'outro': 'Outro'
+        };
+
+        // Mapeia as categorias aos ícones
+        const categoryIcons = {
+            'ocorrencia': redIcon,
+            'vigilancia': greenIcon,
+            'apreensao': blueIcon, // Exemplo, pode mudar
+            'outro': yellowIcon
+        };
+        // --- FIM DA MUDANÇA ---
+
         const bounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
         
         const map = L.map('map', {
@@ -41,18 +98,15 @@
             noWrap: true
         }).addTo(map);
         
-        // --- NOVO (PASSO 4 - Geocoder) ---
-        // 1. INICIALIZA O CONTROLO DE PESQUISA
         L.Control.geocoder({
-                placeholder: 'Pesquisar endereço...',
-                defaultMarkGeocode: false,
-                collapsed: false // NOVO: Impede que o controlo se recolha (fique só o ícone)
+            placeholder: 'Pesquisar endereço...',
+            defaultMarkGeocode: false,
+            collapsed: false 
+        })
+            .on('markgeocode', function (e) {
+                map.fitBounds(e.geocode.bbox);
             })
-                .on('markgeocode', function (e) {
-                    map.fitBounds(e.geocode.bbox);
-                })
-                .addTo(map);
-        // --- FIM DA MUDANÇA ---
+            .addTo(map);
 
 
         // --- Funções de Persistência (Passo 3) ---
@@ -60,13 +114,17 @@
             const markersToSave = [];
             for (const id in markers) {
                 const markerData = markers[id];
+                // --- MUDANÇA (PASSO 5) ---
+                // Salva a categoria
                 markersToSave.push({
                     id: markerData.id,
                     name: markerData.name,
                     description: markerData.description,
                     lat: markerData.lat,
-                    lng: markerData.lng
+                    lng: markerData.lng,
+                    category: markerData.category // NOVO
                 });
+                // --- FIM DA MUDANÇA ---
             }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(markersToSave));
         }
@@ -79,22 +137,33 @@
             let maxId = 0; 
 
             parsedMarkers.forEach(data => {
-                const { id, name, description, lat, lng } = data;
-                const popupContent = getPopupContent(id, name, description);
+                // --- MUDANÇA (PASSO 5) ---
+                // Lê a categoria
+                const { id, name, description, lat, lng, category } = data; // NOVO
+
+                // Define o ícone com base na categoria, ou usa o azul como padrão
+                const icon = categoryIcons[category] || blueIcon;
+
+                // Mostra a categoria no popup
+                const popupContent = getPopupContent(id, name, description, category); // NOVO
                 
-                const marker = L.marker([lat, lng])
+                // Cria o marcador com o ícone correto
+                const marker = L.marker([lat, lng], { icon: icon }) // NOVO
                     .addTo(map)
                     .bindPopup(popupContent)
                     .bindTooltip(name);
 
+                // Salva a categoria no armazém
                 markers[id] = {
                     id: id,
                     marker: marker,
                     name: name,
                     description: description,
                     lat: lat,
-                    lng: lng
+                    lng: lng,
+                    category: category // NOVO
                 };
+                // --- FIM DA MUDANÇA ---
 
                 if (id > maxId) {
                     maxId = id;
@@ -105,7 +174,6 @@
         // --- Fim da Persistência ---
 
 
-        // Referência ao botão
         const addBtn = document.getElementById('addBtn');
 
         addBtn.addEventListener('click', () => {
@@ -114,9 +182,14 @@
             map.getContainer().style.cursor = adding ? 'crosshair' : '';
         });
 
-        // FUNÇÃO AJUDANTE: Gera o HTML para o popup de visualização (com botões)
-        function getPopupContent(id, name, description) {
+        // --- MUDANÇA (PASSO 5) ---
+        // Atualiza a função para incluir a Categoria
+        function getPopupContent(id, name, description, category) {
+            // Mostra o nome da categoria (ex: "Ocorrência")
+            const categoryName = categories[category] || 'Sem Categoria';
+            
             return `
+                <small class="popup-category">${categoryName}</small>
                 <b>${name}</b><br>${description}
                 <div class="popup-actions">
                     <button class="popup-edit-btn" data-id="${id}">Editar</button>
@@ -124,13 +197,23 @@
                 </div>
             `;
         }
+        // --- FIM DA MUDANÇA ---
 
-        // FUNÇÃO AJUDANTE: Gera o HTML para o formulário (para Adicionar ou Editar)
+        // --- MUDANÇA (PASSO 5) ---
+        // Atualiza a função para incluir o seletor de Categoria
         function getFormHTML(data = {}) {
             const id = data.id !== undefined ? `data-id="${data.id}"` : '';
             const formId = data.id !== undefined ? 'editPointForm' : 'pointForm';
             const name = data.name || '';
             const description = data.description || '';
+            const currentCategory = data.category || 'outro'; // Define 'Outro' como padrão
+
+            // Cria as opções do <select> dinamicamente
+            let categoryOptions = '';
+            for (const key in categories) {
+                const selected = (key === currentCategory) ? 'selected' : '';
+                categoryOptions += `<option value="${key}" ${selected}>${categories[key]}</option>`;
+            }
             
             return `
                 <form id="${formId}" ${id}>
@@ -140,6 +223,10 @@
                     <label>Descrição</label>
                     <textarea name="description" placeholder="Digite a descrição">${description}</textarea>
 
+                    <label>Categoria</label>
+                    <select name="category">
+                        ${categoryOptions}
+                    </select>
                     <div class="form-actions">
                         <button type="submit">Salvar</button>
                         <button type="button" class="cancelBtn">Cancelar</button>
@@ -147,13 +234,14 @@
                 </form>
             `;
         }
+        // --- FIM DA MUDANÇA ---
 
 
         map.on('click', (e) => {
             if (!adding) return;
 
             const { lat, lng } = e.latlng;
-            const formHTML = getFormHTML();
+            const formHTML = getFormHTML(); // Formulário de adição (sem dados)
 
             const popup = L.popup({
                 closeOnClick: false,
@@ -176,27 +264,36 @@
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
 
+                    // --- MUDANÇA (PASSO 5) ---
+                    // Lê a categoria do formulário
                     const name = form.name.value;
                     const description = form.description.value;
+                    const category = form.category.value; // NOVO
                     const newId = markerIdCounter++;
-                    const popupContent = getPopupContent(newId, name, description);
+
+                    // Define o ícone e o conteúdo do popup
+                    const icon = categoryIcons[category] || blueIcon; // NOVO
+                    const popupContent = getPopupContent(newId, name, description, category); // NOVO
                     
-                    const marker = L.marker([lat, lng])
+                    // Cria o marcador com o ícone correto
+                    const marker = L.marker([lat, lng], { icon: icon }) // NOVO
                         .addTo(map)
                         .bindPopup(popupContent)    
                         .bindTooltip(name);
 
+                    // Salva a categoria no armazém
                     markers[newId] = {
                         id: newId,
                         marker: marker,
                         name: name,
                         description: description,
                         lat: lat, 
-                        lng: lng
+                        lng: lng,
+                        category: category // NOVO
                     };
+                    // --- FIM DA MUDANÇA ---
                     
                     saveMarkers();
-                    
                     map.closePopup();
                 });
 
@@ -235,11 +332,15 @@
 
                     map.closePopup();
 
+                    // --- MUDANÇA (PASSO 5) ---
+                    // Passa os dados completos (incluindo categoria) para o formulário
                     const editFormHTML = getFormHTML({
                         id: id,
                         name: markerData.name,
-                        description: markerData.description
+                        description: markerData.description,
+                        category: markerData.category // NOVO
                     });
+                    // --- FIM DA MUDANÇA ---
 
                     const editPopup = L.popup({
                         closeOnClick: false,
@@ -257,18 +358,28 @@
                         editForm.addEventListener('submit', (e) => {
                             e.preventDefault();
 
+                            // --- MUDANÇA (PASSO 5) ---
+                            // Lê a nova categoria
                             const newName = editForm.name.value;
                             const newDescription = editForm.description.value;
+                            const newCategory = editForm.category.value; // NOVO
+                            const newIcon = categoryIcons[newCategory] || blueIcon; // NOVO
 
+                            // Atualiza o armazém
                             markers[id].name = newName;
                             markers[id].description = newDescription;
+                            markers[id].category = newCategory; // NOVO
                             
                             saveMarkers(); 
 
-                            const newPopupContent = getPopupContent(id, newName, newDescription);
+                            // Atualiza o popup
+                            const newPopupContent = getPopupContent(id, newName, newDescription, newCategory); // NOVO
 
+                            // Atualiza o marcador (ícone, popup, tooltip)
+                            markerData.marker.setIcon(newIcon); // NOVO
                             markerData.marker.setPopupContent(newPopupContent);
                             markerData.marker.setTooltipContent(newName);
+                            // --- FIM DA MUDANÇA ---
 
                             map.closePopup();
                         });

@@ -165,3 +165,44 @@ html, body {
     /* Garante que o padding não "estoure" a largura */
     box-sizing: border-box; 
 }
+
+/* ... (início do teu styles.css) ... */
+
+.leaflet-popup-content label {
+    display: block;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+/* --- MUDANÇA (PASSO 5) --- */
+/* Adiciona 'select' a este seletor */
+.leaflet-popup-content input,
+.leaflet-popup-content textarea,
+.leaflet-popup-content select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+/* --- FIM DA MUDANÇA --- */
+
+/* NOVO: Estilo para o texto da categoria no popup */
+.popup-category {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.leaflet-popup-content textarea {
+    min-height: 50px;
+    resize: vertical;
+}
+
+/* ... (resto do teu styles.css) ... */
