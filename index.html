@@ -8,13 +8,10 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Botão para ativar modo de adicionar pontos -->
     <button id="addBtn">Adicionar ponto</button>
 
-    <!-- Container do mapa -->
     <div id="map"></div>
 
-    <!-- Biblioteca Leaflet para mapas -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
@@ -68,6 +65,15 @@
                 .setContent(formHTML)
                 .openOn(map);
 
+            // --- MELHORIA DE USABILIDADE ---
+            // NOVO: Desativa o modo de adição assim que o formulário abre.
+            // Isto impede que o utilizador clique noutros locais e abra múltiplos formulários.
+            adding = false;
+            addBtn.textContent = 'Adicionar ponto';
+            map.getContainer().style.cursor = '';
+            // --- FIM DA MELHORIA ---
+
+
             // Aguarda o popup ser renderizado para adicionar eventos
             setTimeout(() => {
                 const form = document.getElementById('pointForm');
@@ -76,21 +82,34 @@
                 // Evento de submit do formulário
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    // Adiciona marcador no mapa
-                    L.marker([lat, lng]).addTo(map);
-                    // Fecha popup e desativa modo de adição
+
+                    // --- MUDANÇA PRINCIPAL (PASSO 1) ---
+
+                    // 1. NOVO: Captura os dados do formulário
+                    const name = form.name.value;
+                    const description = form.description.value;
+
+                    // 2. NOVO: Formata o conteúdo que aparecerá no popup (ao clicar)
+                    // Usamos HTML (<b>) para deixar o nome a negrito.
+                    const popupContent = `<b>${name}</b><br>${description}`;
+                    
+                    // 3. ALTERADO: Adiciona o marcador ao mapa
+                    L.marker([lat, lng])
+                        .addTo(map)
+                        .bindPopup(popupContent)    // NOVO: Associa o popup (mostra ao clicar)
+                        .bindTooltip(name);         // NOVO: Associa o tooltip (mostra ao passar o rato)
+
+                    // --- FIM DA MUDANÇA PRINCIPAL ---
+
+                    // Fecha popup 
+                    // (O modo de adição já foi desativado quando o formulário abriu)
                     map.closePopup();
-                    adding = false;
-                    addBtn.textContent = 'Adicionar ponto';
-                    map.getContainer().style.cursor = '';
                 });
 
                 // Evento de cancelar
                 cancelBtn.addEventListener('click', () => {
+                    // Apenas fecha o popup. O modo de adição já foi desativado.
                     map.closePopup();
-                    adding = false;
-                    addBtn.textContent = 'Adicionar ponto';
-                    map.getContainer().style.cursor = '';
                 });
             }, 0);
         });
