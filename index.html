@@ -18,10 +18,10 @@
         // Variável para controlar se estamos no modo de adicionar pontos
         let adding = false;
         
-        // --- NOVO (PASSO 2.B) ---
-        // 1. O "Armazém" de marcadores. Usamos um objeto para acesso rápido por ID.
+        // --- MUDANÇA (PASSO 2.B - Editar) ---
+        // 1. O "Armazém" de marcadores.
+        //    Agora guarda um objeto com o marcador e os seus dados.
         const markers = {}; 
-        // 2. O contador para o ID único
         let markerIdCounter = 0;
         // --- FIM DA MUDANÇA ---
 
@@ -47,32 +47,59 @@
             map.getContainer().style.cursor = adding ? 'crosshair' : '';
         });
 
+        // --- NOVO (PASSO 2.B - Editar) ---
+        // FUNÇÃO AJUDANTE: Gera o HTML para o popup de visualização (com botões)
+        // Movemos esta lógica para uma função para evitar repetição de código
+        function getPopupContent(id, name, description) {
+            return `
+                <b>${name}</b><br>${description}
+                <div class="popup-actions">
+                    <button class="popup-edit-btn" data-id="${id}">Editar</button>
+                    <button class="popup-delete-btn" data-id="${id}">Apagar</button>
+                </div>
+            `;
+        }
+
+        // FUNÇÃO AJUDANTE: Gera o HTML para o formulário (para Adicionar ou Editar)
+        // 'data' é opcional. Se fornecido, pré-preenche o formulário.
+        function getFormHTML(data = {}) {
+            const id = data.id !== undefined ? `data-id="${data.id}"` : '';
+            const formId = data.id !== undefined ? 'editPointForm' : 'pointForm';
+            const name = data.name || '';
+            const description = data.description || '';
+            
+            return `
+                <form id="${formId}" ${id}>
+                    <label>Nome</label>
+                    <input type="text" name="name" value="${name}" placeholder="Digite o nome" autofocus>
+
+                    <label>Descrição</label>
+                    <textarea name="description" placeholder="Digite a descrição">${description}</textarea>
+
+                    <div class="form-actions">
+                        <button type="submit">Salvar</button>
+                        <button type="button" class="cancelBtn">Cancelar</button>
+                    </div>
+                </form>
+            `;
+        }
+        // --- FIM DA MUDANÇA ---
+
+
         map.on('click', (e) => {
             if (!adding) return;
 
             const { lat, lng } = e.latlng;
 
-            const formHTML = `
-                <form id="pointForm">
-                    <label>Nome</label>
-                    <input type="text" name="name" placeholder="Digite o nome" autofocus>
+            // --- MUDANÇA (PASSO 2.B - Editar) ---
+            // Usa a nova função para gerar o formulário de ADIÇÃO
+            const formHTML = getFormHTML();
+            // --- FIM DA MUDANÇA ---
 
-                    <label>Descrição</label>
-                    <textarea name="description" placeholder="Digite a descrição"></textarea>
-
-                    <div class="form-actions">
-                        <button type="submit">Salvar</button>
-                        <button type="button" id="cancelBtn">Cancelar</button>
-                    </div>
-                </form>
-            `;
-
-            // DEPOIS:
-            // Cria popup no local clicado
             const popup = L.popup({
-                closeOnClick: false, // NOVO: Impede de fechar ao clicar fora
-                closeButton: false,  // NOVO: Remove o botão 'X' do canto
-                autoClose: false     // NOVO: Impede de fechar se outro popup abrir
+                closeOnClick: false,
+                closeButton: false, 
+                autoClose: false
             })
                 .setLatLng([lat, lng])
                 .setContent(formHTML)
@@ -84,8 +111,11 @@
 
 
             setTimeout(() => {
+                // --- MUDANÇA (PASSO 2.B - Editar) ---
+                // O ID do formulário e o botão de cancelar agora são mais genéricos
                 const form = document.getElementById('pointForm');
-                const cancelBtn = document.getElementById('cancelBtn');
+                const cancelBtn = form.querySelector('.cancelBtn'); // Procura DENTRO do formulário
+                // --- FIM DA MUDANÇA ---
 
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
@@ -93,31 +123,27 @@
                     const name = form.name.value;
                     const description = form.description.value;
 
-                    // --- MUDANÇA (PASSO 2.B) ---
-
-                    // 3. Geramos o ID único para este novo marcador
                     const newId = markerIdCounter++;
 
-                    // 4. Criamos o conteúdo do popup com o botão "Apagar"
-                    //    Usamos 'data-id' para guardar o ID no próprio botão
-                    const popupContent = `
-                        <b>${name}</b><br>${description}
-                        <div class="popup-actions">
-                            <button class="popup-delete-btn" data-id="${newId}">Apagar</button>
-                        </div>
-                    `;
+                    // --- MUDANÇA (PASSO 2.B - Editar) ---
+                    // Usa a nova função para gerar o conteúdo do popup
+                    const popupContent = getPopupContent(newId, name, description);
+                    // --- FIM DA MUDANÇA ---
                     
-                    // 5. Criamos o marcador
                     const marker = L.marker([lat, lng])
                         .addTo(map)
                         .bindPopup(popupContent)    
                         .bindTooltip(name);
 
-                    // 6. Guardamos o marcador no nosso "armazém"
-                    markers[newId] = marker;
-                    
+                    // --- MUDANÇA (PASSO 2.B - Editar) ---
+                    // 6. Guardamos o marcador E os dados no nosso "armazém"
+                    markers[newId] = {
+                        marker: marker,
+                        name: name,
+                        description: description
+                    };
                     // --- FIM DA MUDANÇA ---
-
+                    
                     map.closePopup();
                 });
 
@@ -127,37 +153,94 @@
             }, 0);
         });
 
-        // --- NOVO (PASSO 2.B) ---
-        // 7. O "Ouvinte" de Popups
-        //    Este evento é disparado sempre que um popup é aberto no mapa
+        
         map.on('popupopen', (e) => {
-            // 'e.popup' é a referência ao popup que acabou de abrir
             const popup = e.popup;
             
-            // Procuramos pelo nosso botão "Apagar" *dentro* desse popup
+            // --- LÓGICA DE APAGAR (Atualizada) ---
             const deleteBtn = popup.getElement().querySelector('.popup-delete-btn');
-            
             if (deleteBtn) {
-                // Se encontrámos o botão, adicionamos o evento de clique
                 deleteBtn.addEventListener('click', () => {
-                    // 8. A Lógica de Apagar
-                    
-                    // Lemos o ID que guardámos no atributo 'data-id'
                     const id = deleteBtn.dataset.id;
                     
-                    // Usamos o ID para ir buscar o marcador ao nosso "armazém"
-                    const markerToRemove = markers[id];
+                    // --- MUDANÇA (PASSO 2.B - Editar) ---
+                    // Busca a referência correta (o marcador está dentro do objeto)
+                    const markerToRemove = markers[id].marker;
+                    // --- FIM DA MUDANÇA ---
                     
                     if (markerToRemove) {
-                        // Remove o marcador do mapa
                         map.removeLayer(markerToRemove);
-                        // Remove o marcador do nosso "armazém"
                         delete markers[id];
                     }
                 });
             }
+
+            // --- NOVO (PASSO 2.B - Editar) ---
+            // 7. Lógica de Editar
+            const editBtn = popup.getElement().querySelector('.popup-edit-btn');
+            if (editBtn) {
+                editBtn.addEventListener('click', () => {
+                    // Obtém o ID e os dados atuais
+                    const id = editBtn.dataset.id;
+                    const markerData = markers[id];
+                    const latLng = markerData.marker.getLatLng();
+
+                    // Fecha o popup de visualização
+                    map.closePopup();
+
+                    // Cria o HTML do formulário de EDIÇÃO (pré-preenchido)
+                    const editFormHTML = getFormHTML({
+                        id: id,
+                        name: markerData.name,
+                        description: markerData.description
+                    });
+
+                    // Abre o popup do formulário de EDIÇÃO
+                    const editPopup = L.popup({
+                        closeOnClick: false,
+                        closeButton: false, 
+                        autoClose: false
+                    })
+                        .setLatLng(latLng)
+                        .setContent(editFormHTML)
+                        .openOn(map);
+                    
+                    // Adiciona eventos ao formulário de EDIÇÃO
+                    setTimeout(() => {
+                        const editForm = document.getElementById('editPointForm');
+                        const cancelEditBtn = editForm.querySelector('.cancelBtn');
+
+                        editForm.addEventListener('submit', (e) => {
+                            e.preventDefault();
+
+                            // Pega os NOVOS dados
+                            const newName = editForm.name.value;
+                            const newDescription = editForm.description.value;
+
+                            // Atualiza os dados no "armazém"
+                            markers[id].name = newName;
+                            markers[id].description = newDescription;
+
+                            // Cria o novo conteúdo do popup de visualização
+                            const newPopupContent = getPopupContent(id, newName, newDescription);
+
+                            // Atualiza o marcador existente
+                            markerData.marker.setPopupContent(newPopupContent);
+                            markerData.marker.setTooltipContent(newName);
+
+                            // Fecha o popup de edição
+                            map.closePopup();
+                        });
+
+                        cancelEditBtn.addEventListener('click', () => {
+                            // Ao cancelar, apenas fechamos o formulário
+                            map.closePopup();
+                        });
+                    }, 0);
+                });
+            }
+            // --- FIM DA MUDANÇA ---
         });
-        // --- FIM DA MUDANÇA ---
     </script>
 </body>
 </html>
